@@ -116,7 +116,7 @@ Where appropriate, we also compare against publicly released datasets from other
 
 ## Sub-Repos
 
-### `squiggle-core`
+### [`squiggle-core`](https://github.com/powerthinking/squiggle-core)
 The reusable library
 - geometry descriptor extraction
 - event detection algorithms
@@ -124,21 +124,21 @@ The reusable library
 - schemas (Parquet table specs), validation, versioning
 - evaluation utilities for “match quality”
 
-### `/experiments`
+### [`squiggle-experiments`](https://github.com/powerthinking/squiggle-experiments)
 Experiment configs and runners:
 - curriculum variants
 - tokenization/order perturbations
 - logging resolution settings
 - seed matrices
 
-### `/instrumentation`
+### [`squiggle-instrumentation`](https://github.com/powerthinking/squiggle-instrumentation)
 Reusable logging + probe harnesses:
 - hooks for embeddings/residual streams/selected activations
 - optional attention logging (kept selective for cost)
 - checkpointing strategy
 - derived metric compilation
 
-### `/analysis`
+### [`squiggle-analysis`](https://github.com/powerthinking/squiggle-analysis)
 Squiggle pipeline:
 - geometry descriptor extraction
 - dynamics + event detection
@@ -146,7 +146,7 @@ Squiggle pipeline:
 - matching + correlation tooling
 - reporting
 
-### `/datasets`
+### [`squiggle-datasets`](https://github.com/powerthinking/squiggle-datasets)
 Dataset build scripts + manifests:
 - proof-family generators
 - train/val/test split logic
