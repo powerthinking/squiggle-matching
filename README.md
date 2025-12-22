@@ -30,6 +30,16 @@ This work is intentionally optimized for:
 A core part of the program is producing openly useful training-trajectory datasets and curated math curricula: including work intended for competitions like **Kaggle AIMO / Math Corpus Prize**: but the bigger goal is to build a new lens on learning dynamics that generalizes beyond a single contest.
 
 ---
+## What this is not
+
+This project does **not** attempt to:
+- discover new mathematical theorems,
+- replace formal theory with neural analogies,
+- or treat internal representations as literal mathematical objects.
+
+All claims are empirical and scoped to measurable changes inside trained models.
+
+---
 
 ## The Three-Layer Squiggle Structure
 
@@ -50,11 +60,14 @@ Temporal changes of geometry:
 - stability vs churn indicators
 
 ### 3) Event / Signature Layer
+
 Compressed, semi-discrete transitions suitable for matching:
 - rank collapse → re-expansion
 - bifurcation / specialization events
 - phase transitions (“operation onset” events)
 - regime shifts across tasks/curricula
+
+Events are treated as heuristic markers for candidate learning transitions, not ground-truth semantic boundaries.
 
 The system is built to support **event detection**, **signature extraction**, and **cross-run matching** as first-class concepts.
 
@@ -166,13 +179,14 @@ Dataset build scripts + manifests:
 ---
 
 ## Current status
-This repository is under active development. The immediate focus is:
 
-1) Finalize Scout pipeline end-to-end  
-2) Validate squiggle descriptor + event detection on controlled curricula  
-3) Scale into Research runs + publish the first trajectory dataset + writeup  
-4) Release the Math Corpus Prize dataset package(s) with analysis
+Active development with current focus on:
+1) Finalizing Scout pipeline end-to-end
+2) Validating descriptor and event detection on controlled curricula
+3) Scaling into Research runs and preparing the first trajectory dataset + writeup
+4) Packaging Math Corpus Prize datasets with accompanying analysis
 
+---
 
 ## Contact / collaboration
 If you’re working on similar “learning dynamics” or training-trajectory interpretability, I’d love to compare notes, methods, and results.
