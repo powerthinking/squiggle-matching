@@ -102,7 +102,7 @@ They are the bridge from geometry to comparison.
 
 ---
 
-### 🔒 Ontology Freeze Rule
+### Ontology Freeze Rule
 Layers A, B, and C define *what a squiggle is*.  
 They **must not change** for the Math Corpus submission.
 
@@ -186,7 +186,7 @@ Similarity does *not* require:
 
 ---
 
-### 🔒 Matching Freeze Rule
+### Matching Freeze Rule
 Matching semantics define **what similarity means** and must remain stable.
 
 ---
@@ -267,7 +267,7 @@ Scoring ranks **instances**, not **types**.
 
 ---
 
-### 🔒 Scoring Boundary Rule
+### Scoring Boundary Rule
 Scoring must not redefine:
 - Events
 - Matching
