@@ -90,6 +90,28 @@ Defined by:
 
 Each run produces immutable artifacts and a `meta.json` manifest.
 
+### 2.4.1 Probe (Config + Capture Stream)
+
+A **probe** is a configured mechanism for capturing **primitive observations** from the model during a run, in support of downstream geometry/state/dynamics/event analysis.
+
+A probe is defined by **probe_config** (immutable per run) and produces a **probe capture stream** (immutable artifacts).
+
+**Probe scope** (non-negotiable):
+- Probes capture **primitive observations only** (e.g., activations, attention summaries, gradient norms, representation sketches).
+- Probes do **not** perform event detection, matching, or scoring online.
+- Probes may compute lightweight, local reductions needed to make capture feasible (e.g., random projections, layer sampling, chunked stats), but these reductions must be:
+  - explicitly specified in probe_config
+  - versioned
+  - reproducible
+
+**Probe ≠ Analysis**:
+- Probe outputs are **raw-ish evidence**.
+- Geometry/state computations, event detection, matching, and scoring are **post-run analysis** consumers of probe artifacts.
+
+**Immutability rule**:
+- Probe artifacts are immutable once created.
+- If a probe definition changes, it must produce a new run_id (via probe_config hash).
+
 ---
 
 ### 2.5 Test (Replicate Set)
@@ -135,13 +157,44 @@ Typical uses:
 * Any change to curriculum ⇒ new Test (not a buried variant)
 
 ---
+## 2.8 Probe Artifacts (Immutable)
 
+Each run that enables probes must produce probe artifacts in a standardized location, e.g.:
+
+```
+runs/<run_id>/
+meta.json
+logs/
+probes/
+<probe_name>/
+manifest.json
+captures/
+step_000100.*
+step_000200.*
+index.*
+stats.json
+```
+
+**Probe manifest must include**:
+- probe_config hash
+- schema_version
+- code commit
+- capture schedule actually executed
+- any dropped samples and why (OOM, truncation, etc.)
+- file inventory + checksums (optional but preferred)
+
+**Storage rule**:
+Probe artifacts may be sharded/chunked, but must be reconstructable deterministically via index + manifest.
+
+---
 ## 3. Seed Invariance & Event Validity
 
 ### 3.1 Seed Policy
 
 * All primary claims must be based on **events that appear consistently across seeds**
 * Events that do not replicate are downgraded or marked exploratory
+* Event consensus operates over post-run derived Layer C events and their supporting Layer A/B dynamics; probes only supply the primitive evidence used to compute these layers.
+
 
 ### 3.2 Event Consensus Requirements
 
@@ -183,6 +236,25 @@ All derived logic must operate via a **Feature Window API**, e.g.:
 Controller decisions must be logged as their own event stream.
 
 ---
+## 4.2 Probes vs Controllers (Online Boundary)
+
+Probes and controllers may both run during training, but they have different contracts:
+
+### Probes (Capture)
+- Output: primitive observation streams
+- Allowed: scheduled sampling, compression, selection of layers/heads/tokens
+- Not allowed: declaring events, declaring matches, declaring causal impact
+- Must log: what was captured, when, and with what reduction settings
+
+### Controllers (Decision-making)
+- Output: decision events + rationale features
+- May use: Feature Window API over *already-logged primitives*
+- Must log: inputs, computed features, decision, version, thresholds
+
+**Design rule**:
+Controllers may reference probe-derived primitives only through the Feature Window API, never through ad-hoc logic in training code.
+
+---
 
 ## 5. Data Pipeline (Conceptual)
 
@@ -197,6 +269,34 @@ Controller decisions must be logged as their own event stream.
 
 Training artifacts are never overwritten.
 Analysis artifacts are versioned and additive.
+
+---
+## 5.1 Probe & Analysis Split (Pipeline Contract)
+
+The pipeline is intentionally split into:
+
+### Training-time (Immutable evidence)
+1. Dataset generation / import
+2. Curriculum instance generation
+3. Training run execution
+4. Primitive logging (scalars)
+5. **Probe captures** (configured observation streams)
+6. Controller event stream (if any)
+
+### Post-run (Versioned interpretation)
+7. Post-run calculations / aggregations
+8. Geometry state computation (Layer A)
+9. Dynamics computation (Layer B)
+10. Event extraction / encoding (Layer C)
+11. Consensus (seed invariance)
+12. Matching (event topology + dynamic profile + invariance class)
+13. Scoring / ranking (Magnitude × Coherence × Novelty)
+14. Reporting and export
+
+**Rule**:
+- Training-time produces facts.
+- Post-run produces interpretations.
+- Interpretations are versioned and additive.
 
 ---
 
@@ -260,6 +360,23 @@ Each artifact records:
 Breaking schema changes increment MAJOR versions.
 
 ---
+## 7.3 Probe Config Canonicalization (Required)
+
+A run’s identity must include a canonical representation (and hash) of `probe_config`, including at minimum:
+
+- target modules (layers, blocks, heads)
+- capture types (activations, attention summaries, gradients, etc.)
+- sampling schedule (steps / intervals / triggers)
+- token/sequence sampling rules (which tokens, how many)
+- reductions/compressions (projection dims, PCA/RSVD params, sketch type)
+- precision/dtypes and device placement (fp16/bf16, cpu/gpu)
+- schema_version + probe_version
+- random seeds used *inside the probe* (if any)
+
+**Rule**:
+Any change to probe_config ⇒ new run_id.
+
+--- 
 
 ## 8. Repository Responsibilities
 
