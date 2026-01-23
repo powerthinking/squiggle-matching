@@ -16,6 +16,7 @@ data/runs/
   metrics_wide/<run_id>.parquet
   geometry_state/<run_id>.parquet
   events_candidates/<run_id>.parquet
+  scoring_baselines/<baseline_id>.json
 
   # Derived/consensus artifacts (typically cross-seed)
   events/<test_id>.parquet

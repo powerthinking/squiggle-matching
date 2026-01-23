@@ -74,6 +74,16 @@ Descriptors for `(run_id, analysis_id, step, sample_id, layer, module)`.
 ### 21 — `geometry_dynamics/` (Layer B, interpretation)
 Deltas/drift for same keys as geometry_state.
 
+### 22 — `events_candidates/` (Layer C candidates, interpretation)
+Candidate event windows detected from `geometry_state`.
+
+Notes:
+- `events_candidates` are per-run candidates (not cross-seed consensus).
+- Windows are represented by `start_step` and `end_step`.
+- Supports both:
+  - `event_type = change_point` (single-metric)
+  - `event_type = change_point_composite` (multi-metric; `metric = __composite__`)
+
 ---
 
 ## Probe outputs (facts + interpretation)
@@ -236,3 +246,51 @@ Columns:
 
 Primary key (recommended):
 - (`run_id`, `family_id`, `seed`, `probe_name`, `probe_config_hash`, `event_id`)
+
+---
+
+## 22 — `events_candidates/` (analysis)
+Purpose: per-run candidate event windows detected from geometric time series.
+
+Columns:
+- `run_id` string
+- `analysis_id` string
+- `schema_version` string
+- `created_at_utc` timestamp[us, tz=UTC]
+- `event_id` string
+- `layer` int16
+- `metric` string
+- `step` int64
+- `start_step` int64 (nullable)
+- `end_step` int64 (nullable)
+- `event_type` string
+- `score` float32
+
+Scoring breakdown (nullable):
+- `magnitude` float32
+- `structure_modifier` float32
+- `magnitude_eff` float32
+- `coherence` float32
+- `novelty` float32
+
+Single-metric diagnostics (nullable; populated for `event_type = change_point`):
+- `metric_size` float32
+- `metric_z` float32
+- `baseline_median` float32
+- `baseline_mad` float32
+- `volatility_event` float32
+- `volatility_baseline` float32
+- `volatility_ratio` float32
+- `volatility_ratio_agg` float32
+
+Composite per-metric diagnostics (nullable JSON strings; populated for `event_type = change_point_composite`):
+- `metric_sizes_json` string
+- `metric_z_json` string
+- `baseline_median_json` string
+- `baseline_mad_json` string
+- `volatility_event_json` string
+- `volatility_baseline_json` string
+- `volatility_ratio_json` string
+
+Primary key (recommended):
+- (`run_id`, `analysis_id`, `event_id`)

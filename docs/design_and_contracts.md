@@ -293,6 +293,21 @@ The pipeline is intentionally split into:
 13. Scoring / ranking (Magnitude × Coherence × Novelty)
 14. Reporting and export
 
+Event candidates (Layer C) are represented as per-run, per-layer windows:
+- `events_candidates/<run_id>.parquet`
+- Windows via `start_step`, `end_step`
+- Supported candidate types:
+  - `event_type = change_point` (single-metric)
+  - `event_type = change_point_composite` (multi-metric; `metric = __composite__`)
+
+Scoring produces a breakdown suitable for later tuning:
+- `score`, `magnitude`, `structure_modifier`, `magnitude_eff`, `coherence`, `novelty`
+- Single-metric candidates may store per-metric diagnostics as scalar columns.
+- Composite candidates may store per-metric diagnostics as maps (e.g., JSON-encoded dictionaries) keyed by metric name.
+
+Scoring baselines may be computed from a designated baseline run or persisted as artifacts:
+- `scoring_baselines/<baseline_id>.json`
+
 **Rule**:
 - Training-time produces facts.
 - Post-run produces interpretations.
