@@ -71,6 +71,8 @@ Events are treated as heuristic markers for candidate learning transitions, not 
 
 The system is built to support **event detection**, **signature extraction**, and **cross-run matching** as first-class concepts.
 
+> **Implementation details:** See [docs/event_detection.md](docs/event_detection.md) for the event detection algorithm, warmup handling, and retention metrics.
+
 ---
 
 ## Two-model setup: Scout vs Research
@@ -175,6 +177,18 @@ Dataset build scripts + manifests:
 - **Instrumentation should be boring:** failures should be easy to detect and explain.
 - **Releases matter:** datasets, configs, and summaries are first-class outputs.
 - **No heroics:** prefer repeatable pipelines over clever one-offs.
+
+---
+
+## Documentation
+
+Detailed specifications in `docs/`:
+
+- [event_detection.md](docs/event_detection.md) — Event detection algorithm, warmup handling, retention metrics, LLM analysis
+- [squiggle_architecture.md](docs/squiggle_architecture.md) — Frozen ontology vs evolving measurement
+- [probe_harness_design.md](docs/probe_harness_design.md) — Probe protocol, DIS scoring
+- [artifacts.md](docs/artifacts.md) — Directory layout and artifact paths
+- [parquet_schemas.md](docs/parquet_schemas.md) — Schema definitions
 
 ---
 
