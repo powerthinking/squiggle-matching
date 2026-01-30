@@ -114,6 +114,37 @@ n_selected + n_skipped_suppression + n_skipped_topk + n_skipped_pre_warmup_cap =
 
 This invariant prevents silent counting bugs.
 
+## Candidate-Level Logging
+
+For detailed analysis, the system can log individual candidate decisions:
+
+```bash
+python -m squiggle_analysis --run-id <RUN_ID> --log-candidates
+```
+
+This writes `candidates/<run_id>/<analysis_id>.parquet` with per-candidate details:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `layer` | int | Layer index |
+| `metric` | str | Geometry metric name |
+| `peak_idx` | int | Index in series |
+| `peak_step` | int | Step of candidate |
+| `score` | float | Candidate score |
+| `selected` | bool | Whether selected |
+| `skip_reason` | str | Why skipped: `suppression`, `topk`, `pre_warmup_cap`, or null |
+| `suppressed_by_idx` | int | Index of suppressing event (if suppressed) |
+| `suppressed_by_step` | int | Step of suppressing event (if suppressed) |
+| `is_pre_warmup` | bool | Whether in pre-warmup period |
+
+### Use Cases
+
+**Cross-seed candidate comparison:** Compare pre-suppression candidates between seeds to distinguish signal differences from selection instability.
+
+**Suppression chain analysis:** Track which events suppress which, identifying "king of the hill" dynamics.
+
+**Threshold sensitivity:** Identify candidates just above/below threshold to assess detection robustness.
+
 ## Output Schema
 
 Events are written to `events_candidates/<run_id>.parquet`:
@@ -239,40 +270,57 @@ If not specified, the latest analysis for each run is auto-selected.
 Use `compare_runs.py` to compare event detection across seeds:
 
 ```bash
-python -m squiggle_analysis.compare_runs RUN_ID1 RUN_ID2 --output comparison.md
+python -m squiggle_analysis --compare RUN_ID1 RUN_ID2 --output comparison.md
 ```
 
-### Report Sections
+See [Cross-Seed Invariance Analysis](cross_seed_analysis.md) for comprehensive documentation.
 
-**Config Fingerprint:**
-Verifies runs used identical detection parameters. Displays hash for quick comparison.
+### The Invariance Stack
 
-**Invariance Metrics (Jaccard):**
-- Jaccard similarity: `|intersection| / |union|`
-- Precision A→B: What fraction of A's events appear in B
-- Recall B→A: What fraction of B's events appear in A
+Cross-run comparison computes invariance at multiple levels:
 
-**Event Raster Plots:**
-Visual comparison showing step (x-axis) vs layer (y-axis), colored by metric.
-Includes intersection raster showing events common to both runs.
+| Level | Metric | Question |
+|-------|--------|----------|
+| **Signal** | Trajectory Correlation | Do the geometry curves look the same? |
+| **Neighborhood** | Neighbor Coverage | Do both seeds show activity in the same neighborhoods? |
+| **Peak** | IoU Jaccard | Do they select the same discrete event winners? |
 
-**Retention Comparison:**
-- Per-run retention statistics
-- Density diagnostics (candidates/series)
-- Interprets retention differences (density → suppression)
+**Key distinction:**
+- **Neighbor Coverage** answers: "Do both seeds show activity in the same neighborhoods?"
+- **Peak/IoU Jaccard** answers: "Do they select the same discrete winners?"
 
-**Trajectory Correlation:**
-Pairwise correlation of geometry trajectories across runs.
+### Neighbor Coverage (Middle Layer Metric)
+
+Measures whether events have neighbors within suppression radius:
+
+```
+Definition:
+  Signature (matching key): (layer, metric, event_type)
+  Neighbor condition: ∃ event in other run with |Δstep| ≤ radius_steps
+  Formula: (A_has_neighbor + B_has_neighbor) / (|A| + |B|)
+```
+
+**Note:** This is NOT a true Jaccard. It's a symmetric coverage score.
+
+Output includes nearest-neighbor distance statistics:
+- `median`, `p90`, `p95` — Distance distribution
+- `within_radius`, `within_half_radius` — Fraction within thresholds
+- `winner_stability` — Fraction where peak winners match
 
 ### Interpreting Results
 
-| Metric | Strong Invariance | Weak Invariance |
-|--------|-------------------|-----------------|
-| Jaccard | > 50% | < 25% |
-| Common Events | > 5 | 0 |
-| Trajectory Corr | > 0.9 | < 0.8 |
+| Pattern | Trajectory Corr | Neighbor Coverage | IoU Jaccard | Interpretation |
+|---------|-----------------|-------------------|-------------|----------------|
+| **Stable landscape / unstable argmax** | > 0.9 | > 40% | < 30% | Same neighborhoods, different winners |
+| **Strong invariance** | > 0.9 | > 60% | > 50% | Highly reproducible events |
+| **Weak invariance** | < 0.8 | < 30% | < 15% | Divergent dynamics |
 
-Events appearing consistently across seeds indicate genuine learning dynamics rather than random fluctuations.
+The most common pattern is "stable energy landscape / unstable argmax":
+- High trajectory correlation (~0.9)
+- Moderate neighbor coverage (~50%)
+- Low peak IoU Jaccard (~30%)
+
+This means: *Both seeds detect events in the same neighborhoods, but pick different winners due to suppression sensitivity.*
 
 ### Config Mismatch Warning
 

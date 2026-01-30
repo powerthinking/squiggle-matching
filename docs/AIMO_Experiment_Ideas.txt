@@ -1,0 +1,160 @@
+Yes — your curriculum implementation is *exactly* the kind of lever that can turn “event detection” into a **corpus construction pipeline** (i.e., something plausibly submit-worthy), especially now that you’ve moved LLM analysis to **seed-invariant events** and “tests” (multi-seed bundles) are your base unit.
+
+Below are **specific experiments** that (a) fit your current primitives, and (b) naturally yield a dataset artifact: *a ranked, reproducible set of items / mini-families that reliably trigger seed-invariant learning events*.
+
+---
+
+## The key enabler you already have: trace → attribution
+
+If you want any experiment to plausibly lead to a corpus submission, you need to attribute seed-invariant events back to *what the model saw*. Your system already supports this with optional per-step sampling traces (deterministic replay)  and `sample_trace.jsonl` item IDs , plus phase labeling in scalars .
+
+So the meta-pattern for every experiment below is:
+
+1. run a **test** (multi-seed) with `trace_enabled: true` 
+2. detect **seed-invariant events** (your current pipeline)
+3. use trace windows to compute “**event-precedence**” / “**event-trigger**” candidates
+4. validate with counterfactual replays
+
+That’s how you turn “cool analysis” into “corpus”.
+
+---
+
+## Experiment 1: Curriculum A/B that maximizes *event yield per token*
+
+**Goal:** find curricula that reliably produce *more* and *clearer* seed-invariant events, then mine the high-impact items.
+
+### Design
+
+Run the same total steps and model/config across tests:
+
+* **iid_baseline** (proportional) 
+* **balanced_baseline** 
+* **family_blocked** (one target family at a time → mix) 
+* **family_ramp** (targets-only → ramp controls → full mix) 
+
+You already have the target/control split (6 targets, 11 controls) .
+
+### Output artifact (corpus-ready)
+
+For each curriculum, produce:
+
+* a ranked list of item_ids that most often precede seed-invariant events (with confidence across seeds)
+* the minimal “**trigger bundles**” (top-k items per event type)
+* a reproducibility package: curriculum manifest + trace + your event reports 
+
+Why this can be submit-worthy: you’re implicitly producing a dataset of “items that cause representation reorganizations under controlled curricula,” not just “hard problems.”
+
+---
+
+## Experiment 2: “Trigger-set” mining via counterfactual trace replay
+
+**Goal:** demonstrate causality-ish: that specific items (or micro-sets) are responsible for a seed-invariant event, not just “training noise.”
+
+### Design
+
+Pick your best event classes (whatever your scoring currently finds most coherent across seeds), then:
+
+1. Identify the **T-step window** before each event peak (or onset) in each run.
+2. From trace, extract the multiset of `item_id`s in those windows.
+3. Compute overlap across seeds → candidate trigger set.
+4. **Counterfactual runs** (same seed, same curriculum spec, but edit the sampler replay):
+
+   * replay original trace (control)
+   * replay trace with the candidate items replaced by random items from the *same family* (to keep distribution constant)
+
+Your sampler supports different sampling modes (balanced/proportional/uniform item) , so you can keep family distribution controlled while swapping within-family.
+
+### Output artifact (corpus-ready)
+
+A list of “**event triggers**” of the form:
+
+* (event_signature, trigger_items, family_context, effect_size)
+* plus “removal kills event” / “replacement preserves/doesn’t preserve event” statistics
+
+This is the closest thing to a strong “dataset claim” you can make without needing a full benchmark story.
+
+---
+
+## Experiment 3: “Order matters” tests using blocked vs ramp curricula to isolate prerequisites
+
+**Goal:** find problem sets whose impact depends on *when* they appear — these are great corpus candidates because they encode “learning progression.”
+
+### Design
+
+Use the same families but change *introduction schedule*:
+
+* **Blocked targets** early (your family_blocked) 
+* **Targets-only then ramp controls** (family_ramp) 
+* A new “controls-first” curriculum (mirror ramp: ramp targets in later)
+
+Because your curriculum is a *policy*, not a static reorder , you can compare “same overall exposure, different timing.”
+
+### Output artifact (corpus-ready)
+
+A set of “**order-sensitive families / items**”:
+
+* items that trigger events *only* when preceded by targets-only exposure
+* items that lose impact if introduced too early/late
+
+That’s a very defensible dataset angle: *curriculum-sensitive triggers*.
+
+---
+
+## Experiment 4: Sampling-mode stress test to detect “family-structure artifacts”
+
+**Goal:** verify that your triggers aren’t an artifact of family balancing.
+
+Run the same curriculum phases, but vary sampling mode:
+
+* `balanced_family` vs `proportional_family` 
+* optionally `uniform_item` 
+
+### Output artifact (corpus-ready)
+
+Split triggers into:
+
+* **robust triggers** (show up across sampling modes)
+* **distribution-sensitive triggers** (depend on balanced vs proportional)
+
+For a corpus submission, “robust triggers” are gold.
+
+---
+
+## Experiment 5: Build a “Squiggle Impact Curriculum” and export it as the submission itself
+
+This is the most direct “submission-shaped” experiment.
+
+### Design
+
+Two-stage pipeline:
+
+**Stage A (discovery):** run baseline curricula; mine top trigger items per event type.
+
+**Stage B (construction):** create a curriculum YAML that:
+
+* starts with the trigger set (explicit weights) 
+* ramps in the rest later (ramp weights) 
+
+You already support multi-phase curricula with fractional boundaries  and reproducible manifests .
+
+### Output artifact (corpus-ready)
+
+A *curated curriculum + dataset slice*:
+
+* “impact_core.jsonl” (the trigger items)
+* “impact_ramp.yaml” (how to train on them)
+* evidence: seed-invariant event lift vs baseline
+
+Even if the competition wants “a corpus,” this is a very clean story: **a corpus that measurably induces learning events**.
+
+---
+
+## If you only do one: do Experiment 2 (counterfactual replay) + Stage B of Experiment 5
+
+Given your time concern, that combo has the best ratio of:
+
+* minimal new engineering (you already have trace + manifests + curricula)
+* strongest claim (event disappears when items removed/replaced)
+* clean deliverables (a ranked list / slice you can ship)
+
+If you want, paste (or summarize) what your seed-invariant event output looks like (fields + how you window onsets/peaks), and I’ll map it to a concrete “trigger mining” scoring rule that plugs directly into your current event scoring + test abstraction.
